@@ -85,7 +85,11 @@ service cloud.firestore {
 
     // --- Archived Results Collection ---
     match /archivedResults/{resultId} {
-      allow read: if isAdmin();
+      // Students can read their own archived results, admins can read all
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.studentId == request.auth.uid
+      );
       allow write: if isAdmin();
     }
 
