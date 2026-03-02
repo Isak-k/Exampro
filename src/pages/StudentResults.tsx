@@ -43,13 +43,15 @@ const StudentResults = () => {
     if (!user) return;
 
     try {
-      console.log('📊 Fetching student results...');
+      console.log('📊 Fetching student results for user:', user.uid);
       const attempts = await getStudentAttempts(user.uid);
-      console.log(`✓ Found ${attempts.length} attempts`);
+      console.log(`✓ Found ${attempts.length} attempts:`, attempts);
       
       // Load archived results for deleted exams
+      console.log('📦 Fetching archived results...');
       const archivedSnap = await getDocs(query(collection(db, "archivedResults"), where("studentId", "==", user.uid)));
       const archived = archivedSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      console.log(`✓ Found ${archived.length} archived results`);
       
       const submittedAttempts = attempts.filter(a => a.isSubmitted);
       console.log(`✓ ${submittedAttempts.length} submitted attempts`);
@@ -108,10 +110,12 @@ const StudentResults = () => {
         return dateB - dateA;
       });
 
-      console.log(`✓ Loaded ${resultsData.length} results`);
+      console.log(`✓ Loaded ${resultsData.length} total results`);
       setResults(resultsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error fetching results:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
       // Don't clear results on error - keep showing cached data
     } finally {
       setLoading(false);
