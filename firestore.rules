@@ -7,37 +7,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // --- Student Feedback Collection ---
-    match /studentFeedback/{feedbackId} {
-      // Students can create their own messages
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      
-      // Students can read their own messages, admins can read all
-      allow read: if isAuthenticated() && (
-        isAdmin() || 
-        isSuperAdmin() ||
-        resource.data.userId == request.auth.uid
-      );
-      
-      // Only admins can update/delete messages
-      allow update, delete: if isAuthenticated() && (isAdmin() || isSuperAdmin());
-
-      match /replies/{replyId} {
-        // Both students and admins can create replies
-        allow create: if isAuthenticated();
-        
-        // Students can read replies to their own messages, admins can read all
-        allow read: if isAuthenticated() && (
-          isAdmin() || 
-          isSuperAdmin() ||
-          get(/databases/$(database)/documents/studentFeedback/$(feedbackId)).data.userId == request.auth.uid
-        );
-        
-        // Only admins can update/delete replies
-        allow update, delete: if isAuthenticated() && (isAdmin() || isSuperAdmin());
-      }
-    }
-
     function isUser(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -48,26 +17,10 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isSuperAdmin() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'isak@gmail.com';
-    }
-
-    function hasPermission(permission) {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        (isSuperAdmin() || 
-         (isAdmin() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions[permission] == true));
-    }
-
     // --- Users Collection ---
     match /users/{userId} {
-      allow read: if isUser(userId) || hasPermission('viewExaminers') || isAdmin();
-      allow create: if isSuperAdmin() || hasPermission('addExaminers');
-      allow update: if isUser(userId) || isSuperAdmin() || hasPermission('editExaminerPermissions');
-      allow delete: if isSuperAdmin() || hasPermission('deleteExaminers');
+      allow read: if isUser(userId) || isAdmin();
+      allow write: if isUser(userId) || isAdmin();
     }
 
     // --- Exams Collection ---
@@ -77,16 +30,16 @@ service cloud.firestore {
       }
 
       allow read: if isAuthenticated();
-      allow create: if hasPermission('createExams') || (isAuthenticated() && request.resource.data.createdBy == request.auth.uid);
-      allow update: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isExamCreator());
-      allow delete: if hasPermission('deleteAllExams') || (hasPermission('deleteOwnExams') && isExamCreator());
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() || isExamCreator();
+      allow delete: if isAdmin() || isExamCreator();
 
       match /questions/{questionId} {
         function isParentExamCreator() {
           return isAuthenticated() && get(/databases/$(database)/documents/exams/$(examId)).data.createdBy == request.auth.uid;
         }
         allow read: if isAuthenticated();
-        allow write: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isParentExamCreator());
+        allow write: if isAdmin() || isParentExamCreator();
       }
 
       match /blockedStudents/{studentId} {
@@ -94,12 +47,11 @@ service cloud.firestore {
           return isAuthenticated() && get(/databases/$(database)/documents/exams/$(examId)).data.createdBy == request.auth.uid;
         }
         allow read: if isAuthenticated();
-        allow write: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isParentExamCreator());
+        allow write: if isAdmin() || isParentExamCreator();
       }
     }
 
     // --- Exam Attempts Collection ---
-    // UPDATED: Allow authenticated users to read all attempts (needed for leaderboard)
     match /examAttempts/{attemptId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.studentId == request.auth.uid;
@@ -117,18 +69,47 @@ service cloud.firestore {
     // --- Departments Collection ---
     match /departments/{departmentId} {
       allow read: if true;
-      allow write: if hasPermission('manageDepartments');
+      allow write: if isAdmin();
     }
 
-    // --- Leaderboard Collections (NEW) ---
+    // --- Leaderboard Collections ---
     match /leaderboardCache/{departmentId} {
-      allow read: if hasPermission('viewLeaderboard') || isAuthenticated();
-      allow write: if hasPermission('manageLeaderboard');
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /leaderboardRankings/{rankingId} {
-      allow read: if hasPermission('viewLeaderboard') || isAuthenticated();
-      allow write: if hasPermission('manageLeaderboard');
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // --- Student Feedback/Messages Collection ---
+    match /studentFeedback/{feedbackId} {
+      // Students can create their own messages
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Students can read their own messages, admins can read all
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.userId == request.auth.uid
+      );
+      
+      // Only admins can update/delete messages
+      allow update, delete: if isAdmin();
+
+      match /replies/{replyId} {
+        // Both students and admins can create replies
+        allow create: if isAuthenticated();
+        
+        // Students can read replies to their own messages, admins can read all
+        allow read: if isAuthenticated() && (
+          isAdmin() || 
+          get(/databases/$(database)/documents/studentFeedback/$(feedbackId)).data.userId == request.auth.uid
+        );
+        
+        // Only admins can update/delete replies
+        allow update, delete: if isAdmin();
+      }
     }
   }
 }
