@@ -6,6 +6,7 @@ import { getExamAttempts } from "@/lib/firebase-attempts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ExamCard } from "@/components/exam/ExamCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -18,7 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText } from "lucide-react";
+import { Loader2, Plus, FileText, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ExamWithStats {
@@ -40,6 +41,7 @@ const AdminExams = () => {
   const [exams, setExams] = useState<ExamWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examToDelete, setExamToDelete] = useState<ExamWithStats | null>(null);
 
@@ -91,8 +93,19 @@ const AdminExams = () => {
   }, [fetchExams]);
 
   const filteredExams = exams.filter((exam) => {
-    if (tab === "published") return exam.is_published;
-    if (tab === "draft") return !exam.is_published;
+    // Filter by tab
+    if (tab === "published" && !exam.is_published) return false;
+    if (tab === "draft" && exam.is_published) return false;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const titleMatch = exam.title.toLowerCase().includes(query);
+      const descriptionMatch = exam.description?.toLowerCase().includes(query);
+      
+      return titleMatch || descriptionMatch;
+    }
+    
     return true;
   });
 
@@ -152,15 +165,28 @@ const AdminExams = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="all">{t("admin.exams.tabs.all")} ({exams.length})</TabsTrigger>
-            <TabsTrigger value="published">
-              {t("admin.exams.tabs.published")} ({exams.filter((e) => e.is_published).length})
-            </TabsTrigger>
-            <TabsTrigger value="draft">
-              {t("admin.exams.tabs.drafts")} ({exams.filter((e) => !e.is_published).length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="all">{t("admin.exams.tabs.all")} ({exams.length})</TabsTrigger>
+              <TabsTrigger value="published">
+                {t("admin.exams.tabs.published")} ({exams.filter((e) => e.is_published).length})
+              </TabsTrigger>
+              <TabsTrigger value="draft">
+                {t("admin.exams.tabs.drafts")} ({exams.filter((e) => !e.is_published).length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search exams..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
 
           <TabsContent value={tab} className="mt-6">
             {loading ? (

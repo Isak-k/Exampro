@@ -79,21 +79,28 @@ const AdminAllResults = () => {
 
   const fetchAllResults = async () => {
     try {
+      console.log("Fetching all exam results...");
       const data = await getAllExamResults();
+      console.log("Results fetched:", data.length);
       setResults(data);
 
       // Fetch exams for filter dropdown
+      console.log("Fetching exams for filter...");
       const examsRef = collection(db, "exams");
       const examsSnapshot = await getDocs(examsRef);
-      setExams(examsSnapshot.docs.map(doc => ({ 
+      const examsList = examsSnapshot.docs.map(doc => ({ 
         id: doc.data().examId, 
         title: doc.data().title 
-      })));
-    } catch (error) {
+      }));
+      console.log("Exams fetched:", examsList.length);
+      setExams(examsList);
+    } catch (error: any) {
       console.error("Error fetching results:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
       toast({
         title: "Error",
-        description: "Failed to load exam results.",
+        description: error.message || "Failed to load exam results.",
         variant: "destructive",
       });
     } finally {
