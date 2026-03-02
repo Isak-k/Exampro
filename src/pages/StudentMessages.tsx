@@ -16,9 +16,29 @@ export default function StudentMessages() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Array<any>>([]);
   const [selected, setSelected] = useState<any | null>(null);
+  const [replies, setReplies] = useState<Array<any>>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+
+  const loadReplies = useCallback(async (messageId: string) => {
+    setLoadingReplies(true);
+    try {
+      const q = query(
+        collection(db, "studentFeedback", messageId, "replies"),
+        orderBy("createdAt", "asc")
+      );
+      const snap = await getDocs(q);
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setReplies(data);
+    } catch (e) {
+      console.error(e);
+      setReplies([]);
+    } finally {
+      setLoadingReplies(false);
+    }
+  }, []);
 
   const loadMessages = useCallback(async () => {
     if (!user) return;
@@ -32,7 +52,10 @@ export default function StudentMessages() {
       const snap = await getDocs(q);
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMessages(data);
-      if (data.length > 0) setSelected(data[0]);
+      if (data.length > 0) {
+        setSelected(data[0]);
+        loadReplies(data[0].id);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -83,6 +106,7 @@ export default function StudentMessages() {
       });
       setReply("");
       toast({ title: "Reply sent" });
+      loadReplies(selected.id);
     } catch (e: any) {
       toast({ title: "Failed to send", description: e.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -117,7 +141,10 @@ export default function StudentMessages() {
                 messages.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => setSelected(m)}
+                    onClick={() => {
+                      setSelected(m);
+                      loadReplies(m.id);
+                    }}
                     className={`w-full text-left p-3 rounded-lg border hover:bg-muted transition ${
                       selected?.id === m.id ? "bg-muted" : ""
                     }`}
@@ -161,8 +188,41 @@ export default function StudentMessages() {
                 {selected ? (
                   <>
                     <div className="p-3 rounded-lg border bg-muted/50 whitespace-pre-wrap">
+                      <div className="text-xs text-muted-foreground mb-2">Your message:</div>
                       {selected.message}
                     </div>
+                    
+                    {/* Display Replies */}
+                    {loadingReplies ? (
+                      <div className="text-sm text-muted-foreground">Loading replies...</div>
+                    ) : replies.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Replies:</div>
+                        {replies.map((r) => (
+                          <div
+                            key={r.id}
+                            className={`p-3 rounded-lg border ${
+                              r.authorRole === "admin"
+                                ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200"
+                                : "bg-muted/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium">
+                                {r.authorRole === "admin" ? "Admin" : "You"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {r.createdAt?.toDate?.().toLocaleString?.() || ""}
+                              </span>
+                            </div>
+                            <div className="text-sm whitespace-pre-wrap">{r.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No replies yet.</div>
+                    )}
+                    
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Reply</label>
                       <Textarea
