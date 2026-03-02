@@ -4,11 +4,12 @@ import { getPublishedExams } from "@/lib/firebase-exams";
 import { getStudentAttempts } from "@/lib/firebase-attempts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ExamCard } from "@/components/exam/ExamCard";
-import { Loader2, ClipboardList, Send } from "lucide-react";
+import { Loader2, ClipboardList, Send, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
@@ -29,6 +30,7 @@ const StudentExams = () => {
   const [exams, setExams] = useState<ExamData[]>([]);
   const [attemptedExamIds, setAttemptedExamIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
@@ -109,6 +111,16 @@ const StudentExams = () => {
     }
   };
 
+  // Filter exams by search query
+  const filteredExams = exams.filter((exam) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      exam.title.toLowerCase().includes(query) ||
+      exam.description?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -121,19 +133,43 @@ const StudentExams = () => {
           </p>
         </div>
 
+        {/* Search Bar */}
+        {!loading && exams.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search exams by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : exams.length > 0 ? (
+        ) : filteredExams.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {exams.map((exam) => (
+            {filteredExams.map((exam) => (
               <ExamCard
                 key={exam.id}
                 exam={exam}
                 hasAttempted={attemptedExamIds.has(exam.id)}
               />
             ))}
+          </div>
+        ) : exams.length > 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <ClipboardList className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-lg font-medium">No exams found</h3>
+            <p className="text-muted-foreground mt-1 max-w-sm">
+              No exams match your search. Try a different search term.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
