@@ -50,12 +50,12 @@ const Index = () => {
       {/* Hero Section */}
       <div className="relative min-h-screen flex flex-col overflow-hidden">
         {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 dark:from-cyan-950/20 dark:via-teal-950/20 dark:to-blue-950/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-100 via-teal-100 to-cyan-50 dark:from-cyan-950/30 dark:via-teal-950/30 dark:to-cyan-950/20" />
         
         {/* Animated gradient orbs */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full blur-3xl opacity-20 animate-float" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-teal-400 to-blue-400 rounded-full blur-3xl opacity-20 animate-float delay-300" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-purple-400 to-pink-400 rounded-full blur-3xl opacity-10 animate-pulse" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full blur-3xl opacity-30 animate-float" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full blur-3xl opacity-30 animate-float delay-300" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-cyan-300 to-teal-300 rounded-full blur-3xl opacity-15 animate-pulse" />
         
         {/* Grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
@@ -116,7 +116,7 @@ const Index = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Button
                   size="lg"
-                  className="group h-14 px-8 text-lg font-semibold rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-xl shadow-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105 active:scale-95"
+                  className="group h-14 px-8 text-lg font-semibold rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white shadow-2xl shadow-cyan-600/40 hover:shadow-3xl hover:shadow-cyan-600/50 transition-all duration-300 hover:scale-105 active:scale-95 border-2 border-cyan-500"
                   onClick={() => navigate("/auth")}
                 >
                   {t("common.getStarted")}
@@ -125,7 +125,7 @@ const Index = () => {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-14 px-8 text-lg font-semibold rounded-2xl border-2 border-cyan-200 dark:border-cyan-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 hover:border-cyan-300 dark:hover:border-cyan-700 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-sm"
+                  className="h-14 px-8 text-lg font-semibold rounded-2xl border-2 border-cyan-600 dark:border-cyan-500 bg-white dark:bg-gray-900 hover:bg-cyan-50 dark:hover:bg-cyan-950/50 hover:border-cyan-700 dark:hover:border-cyan-400 text-cyan-700 dark:text-cyan-400 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
                   onClick={() => navigate("/about")}
                 >
                   {t("common.learnMore")}
@@ -153,7 +153,7 @@ const Index = () => {
       </div>
 
       {/* Features Section */}
-      <div className="relative py-24 bg-gradient-to-b from-background to-cyan-50/30 dark:to-cyan-950/10">
+      <div className="relative py-24 bg-gradient-to-b from-cyan-50/50 to-teal-50/50 dark:from-cyan-950/20 dark:to-teal-950/20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 animate-slide-up">
             <h2 className="text-4xl lg:text-5xl font-display font-bold mb-4">
@@ -188,7 +188,7 @@ const Index = () => {
 
       {/* CTA Section */}
       <div className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-teal-500" />
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-teal-400 to-cyan-500" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)] bg-[size:24px_24px]" />
         
         <div className="relative container mx-auto px-4 text-center">
