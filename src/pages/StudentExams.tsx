@@ -40,12 +40,21 @@ const StudentExams = () => {
   }, [user, profile]);
 
   const fetchExams = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("⏳ Waiting for user...");
+      return;
+    }
 
     try {
+      console.log("📚 Fetching exams for student:", user.uid);
+      console.log("Department ID:", profile?.departmentId);
+      
       // Pass the student's department ID to filter exams
       const examsData = await getPublishedExams(profile?.departmentId);
+      console.log(`✓ Found ${examsData.length} published exams`);
+      
       const attempts = await getStudentAttempts(user.uid);
+      console.log(`✓ Found ${attempts.length} attempts`);
 
       const mappedExams = examsData.map(exam => ({
         id: exam.examId,
@@ -59,8 +68,16 @@ const StudentExams = () => {
 
       setAttemptedExamIds(new Set(attempts.map((a) => a.examId)));
       setExams(mappedExams);
-    } catch (error) {
-      console.error("Error fetching exams:", error);
+      console.log("✓ Exams loaded successfully");
+    } catch (error: any) {
+      console.error("❌ Error fetching exams:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      toast({
+        title: "Error loading exams",
+        description: error.message || "Please refresh the page",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
