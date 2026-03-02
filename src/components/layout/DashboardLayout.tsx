@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { signOut } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,6 +37,7 @@ import {
   UserCog,
   Building,
   User,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +47,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { profile, role } = useAuth();
+  const { hasPermission, isSuperAdmin } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,24 +59,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate("/");
   };
 
+  // Show ALL admin menu items - permissions control buttons within pages, not sidebar visibility
   const adminLinks = [
     { href: "/dashboard", label: t("dashboard.menu.dashboard"), icon: LayoutDashboard },
     { href: "/dashboard/admin/exams", label: t("dashboard.menu.manageExams"), icon: FileText },
     { href: "/dashboard/all-results", label: t("dashboard.menu.allResults"), icon: Trophy },
     { href: "/dashboard/students", label: t("dashboard.menu.students"), icon: Users },
+    { href: "/dashboard/feedback", label: "Feedback", icon: MessageSquare },
     { href: "/dashboard/analytics", label: t("dashboard.menu.analytics"), icon: BarChart3 },
     { href: "/dashboard/leaderboard-admin", label: "Leaderboard Admin", icon: Trophy },
+    { href: "/dashboard/departments", label: t("dashboard.menu.departments"), icon: Building },
+    ...(isSuperAdmin ? [{ href: "/dashboard/super-admin", label: "Super Admin", icon: Shield }] : []),
   ];
-
-  if (role === "admin") {
-    adminLinks.push({ href: "/dashboard/examiners", label: t("dashboard.menu.examiners"), icon: UserCog });
-    adminLinks.push({ href: "/dashboard/departments", label: t("dashboard.menu.departments"), icon: Building });
-  }
 
   const studentLinks = [
     { href: "/dashboard", label: t("dashboard.menu.dashboard"), icon: LayoutDashboard },
     { href: "/dashboard/exams", label: t("dashboard.menu.availableExams"), icon: ClipboardList },
     { href: "/dashboard/results", label: t("dashboard.menu.myResults"), icon: Trophy },
+    { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   ];
 
   const links = role === "admin" ? adminLinks : studentLinks;
@@ -110,7 +113,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full" aria-label="Open Profile Menu">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                     {initials}
@@ -118,11 +121,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{profile?.full_name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{role ? t(`common.${role}`) : ""}</p>
-              </div>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <User className="mr-2 h-4 w-4" />
+                {t("common.profile")}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -269,21 +272,44 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             );
           })}
           
-          {/* Profile Button - Opens Sheet */}
-          <button
-            onClick={() => setProfileSheetOpen(true)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all",
-              profileSheetOpen
-                ? "bg-primary/10 text-primary"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            )}
-          >
-            <User className="h-6 w-6" />
-            <span className="text-[10px] font-medium truncate max-w-full">
-              {t("common.profile")}
-            </span>
-          </button>
+          {/* Shortcut: Admin → Students, Student → Messages */}
+          {role === "admin" ? (
+            <Link
+              to="/dashboard/students"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all",
+                location.pathname === "/dashboard/students"
+                  ? "bg-primary/10 text-primary"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              )}
+            >
+              <Users className="h-6 w-6" />
+              <span className="text-[10px] font-medium truncate max-w-full">
+                {t("dashboard.menu.students")}
+              </span>
+              {location.pathname === "/dashboard/students" && (
+                <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+              )}
+            </Link>
+          ) : (
+            <Link
+              to="/dashboard/messages"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all",
+                location.pathname === "/dashboard/messages"
+                  ? "bg-primary/10 text-primary"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              )}
+            >
+              <MessageSquare className="h-6 w-6" />
+              <span className="text-[10px] font-medium truncate max-w-full">
+                Messages
+              </span>
+              {location.pathname === "/dashboard/messages" && (
+                <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+              )}
+            </Link>
+          )}
         </div>
       </nav>
 

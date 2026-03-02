@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, Clock, CheckCircle, XCircle, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 
 interface Result {
   id: string;
@@ -45,10 +47,14 @@ const StudentResults = () => {
       const attempts = await getStudentAttempts(user.uid);
       console.log(`✓ Found ${attempts.length} attempts`);
       
+      // Load archived results for deleted exams
+      const archivedSnap = await getDocs(query(collection(db, "archivedResults"), where("studentId", "==", user.uid)));
+      const archived = archivedSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      
       const submittedAttempts = attempts.filter(a => a.isSubmitted);
       console.log(`✓ ${submittedAttempts.length} submitted attempts`);
 
-      const resultsData = await Promise.all(submittedAttempts.map(async (attempt) => {
+      const liveResults = await Promise.all(submittedAttempts.map(async (attempt) => {
         try {
           const exam = await getExam(attempt.examId);
           return {
@@ -80,8 +86,22 @@ const StudentResults = () => {
           };
         }
       }));
+      
+      const archivedResults = archived.map((ar) => ({
+        id: ar.attemptId || ar.id,
+        examId: ar.examId,
+        totalScore: ar.totalScore ?? null,
+        maxScore: ar.maxScore ?? null,
+        submittedAt: ar.submittedAt?.toDate?.()?.toISOString?.() || null,
+        timeSpentSeconds: ar.timeSpentSeconds ?? null,
+        exam: {
+          title: ar.examTitle || "Deleted Exam",
+          resultsPublished: true
+        }
+      })) as Result[];
 
       // Sort by submittedAt desc
+      const resultsData = [...liveResults, ...archivedResults];
       resultsData.sort((a, b) => {
         const dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
         const dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;

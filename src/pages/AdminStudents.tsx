@@ -31,10 +31,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, Users, Edit, Trash2, Ban, CheckCircle, Plus } from "lucide-react";
+import { Loader2, Search, Users, Edit, Trash2, Ban, CheckCircle, Plus, MessageSquare, Send } from "lucide-react";
+import { useSectionPermissions } from "@/hooks/useSectionPermissions";
+import { collection, getDocs, orderBy, query, limit, addDoc, Timestamp } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 
 const AdminStudents = () => {
   const { toast } = useToast();
+  const { canEdit, canDelete } = useSectionPermissions();
   const [students, setStudents] = useState<StudentWithStats[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +48,10 @@ const AdminStudents = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedback, setFeedback] = useState<Array<any>>([]);
+  const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null);
+  const [reply, setReply] = useState("");
   const [createForm, setCreateForm] = useState({
     fullName: "",
     email: "",
@@ -80,6 +88,16 @@ const AdminStudents = () => {
     fetchStudents();
     fetchDepartments();
   }, [fetchStudents, fetchDepartments]);
+
+  const fetchFeedback = useCallback(async () => {
+    try {
+      const q = query(collection(db, "studentFeedback"), orderBy("createdAt", "desc"), limit(50));
+      const snap = await getDocs(q);
+      setFeedback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error("Failed to load feedback", e);
+    }
+  }, []);
 
   const handleCreateStudent = async () => {
     if (!createForm.fullName || !createForm.email || !createForm.password) {
@@ -240,10 +258,20 @@ const AdminStudents = () => {
               className="pl-10 input-focus"
             />
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Student
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={() => setCreateDialogOpen(true)} className="flex-1 sm:flex-none">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Student
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => { setFeedbackOpen(true); fetchFeedback(); }} 
+              className="flex-1 sm:flex-none"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Feedback Inbox
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -385,10 +413,12 @@ const AdminStudents = () => {
 
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" onClick={() => handleEditClick(selectedStudent)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Details
-                  </Button>
+                  {canEdit('students') && (
+                    <Button variant="outline" onClick={() => handleEditClick(selectedStudent)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Details
+                    </Button>
+                  )}
                   <Button 
                     variant="outline" 
                     className={selectedStudent.disabled ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"}
@@ -408,17 +438,92 @@ const AdminStudents = () => {
                     )}
                   </Button>
                 </div>
-                <Button 
-                  variant="destructive" 
-                  className="w-full"
-                  onClick={() => handleDeleteClick(selectedStudent)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Student
-                </Button>
+                {canDelete('students') && (
+                  <Button 
+                    variant="destructive" 
+                    className="w-full"
+                    onClick={() => handleDeleteClick(selectedStudent)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Student
+                  </Button>
+                )}
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Feedback Inbox */}
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Student Feedback</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">Latest messages</div>
+              <div className="max-h-[420px] overflow-y-auto space-y-2">
+                {feedback.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedFeedback(item)}
+                    className="w-full text-left p-3 rounded-lg border hover:bg-muted transition"
+                  >
+                    <div className="font-medium">{item.fullName} <span className="text-xs text-muted-foreground">({item.email})</span></div>
+                    <div className="text-sm line-clamp-2">{item.message}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{item.createdAt?.toDate?.().toLocaleString?.() || ""}</div>
+                  </button>
+                ))}
+                {feedback.length === 0 && (
+                  <div className="text-sm text-muted-foreground p-3">No feedback yet.</div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {selectedFeedback ? (
+                <>
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="font-semibold">{selectedFeedback.fullName}</div>
+                    <div className="text-xs text-muted-foreground mb-2">{selectedFeedback.email}</div>
+                    <div className="text-sm whitespace-pre-wrap">{selectedFeedback.message}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reply</Label>
+                    <Textarea
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                      placeholder="Write a reply to the student..."
+                      rows={4}
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={async () => {
+                          if (!reply.trim()) return;
+                          try {
+                            await addDoc(collection(db, "studentFeedback", selectedFeedback.id, "replies"), {
+                              message: reply.trim(),
+                              createdAt: Timestamp.now(),
+                              authorRole: "admin"
+                            });
+                            setReply("");
+                            toast({ title: "Reply sent" });
+                          } catch (e: any) {
+                            toast({ title: "Failed to send", description: e.message || "Try again", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Reply
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground p-3">Select a message to reply.</div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

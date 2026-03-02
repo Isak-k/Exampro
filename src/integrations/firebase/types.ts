@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
+import { UserPermissions } from '@/types/permissions';
 
-export type AppRole = 'admin' | 'student';
+export type AppRole = 'superadmin' | 'admin' | 'student';
 
 export interface UserProfile {
   userId: string;
@@ -10,6 +11,7 @@ export interface UserProfile {
   role: AppRole;
   departmentId?: string; // Optional for admin, required for student ideally
   disabled?: boolean; // If true, user cannot login
+  permissions?: UserPermissions; // Permissions for admin/superadmin roles
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

@@ -9,15 +9,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Pencil, ShieldAlert, ShieldCheck, Ban, CheckCircle } from "lucide-react";
+import { Loader2, Plus, Trash2, Pencil, ShieldAlert, ShieldCheck, Ban, CheckCircle, Settings } from "lucide-react";
 import { getExaminers, createExaminerAccount, deleteExaminer, updateExaminer, toggleExaminerStatus, isSuperAdmin } from "@/lib/firebase-admin";
 import { UserProfile } from "@/integrations/firebase/types";
+import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/integrations/firebase/client';
+import { useSectionPermissions } from "@/hooks/useSectionPermissions";
 
 export default function ManageExaminers() {
   const { role, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canView, canEdit, canDelete } = useSectionPermissions();
   const [examiners, setExaminers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -35,6 +40,21 @@ export default function ManageExaminers() {
   const [deletingExaminer, setDeletingExaminer] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Permissions management
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [managingExaminer, setManagingExaminer] = useState<UserProfile | null>(null);
+  const [permissions, setPermissions] = useState({
+    dashboard: { view: true, edit: false, delete: false },
+    manageExams: { view: true, edit: true, delete: true },
+    allResults: { view: true, edit: false, delete: false },
+    students: { view: true, edit: true, delete: true },
+    analytics: { view: true, edit: false, delete: false },
+    leaderboard: { view: true, edit: true, delete: false },
+    examiners: { view: false, edit: false, delete: false },
+    departments: { view: true, edit: true, delete: true },
+  });
+  const [savingPermissions, setSavingPermissions] = useState(false);
+
   // Form state
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -48,6 +68,8 @@ export default function ManageExaminers() {
       navigate("/dashboard");
       return;
     }
+    
+    // All admins can view examiners page (permissions control buttons within the page)
     fetchExaminers();
   }, [role, navigate]);
 
@@ -180,6 +202,60 @@ export default function ManageExaminers() {
     return !isSuperAdmin(examiner.email) && examiner.email !== user?.email;
   };
 
+  const handleManagePermissions = (examiner: UserProfile) => {
+    setManagingExaminer(examiner);
+    // Load existing permissions from examiner profile
+    const existingPerms = (examiner as any).sectionPermissions || {
+      dashboard: { view: true, edit: false, delete: false },
+      manageExams: { view: true, edit: true, delete: true },
+      allResults: { view: true, edit: false, delete: false },
+      students: { view: true, edit: true, delete: true },
+      analytics: { view: true, edit: false, delete: false },
+      leaderboard: { view: true, edit: true, delete: false },
+      examiners: { view: false, edit: false, delete: false },
+      departments: { view: true, edit: true, delete: true },
+    };
+    setPermissions(existingPerms);
+    setPermissionsOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!managingExaminer) return;
+    setSavingPermissions(true);
+    try {
+      const userRef = doc(db, 'users', managingExaminer.userId);
+      await updateDoc(userRef, {
+        sectionPermissions: permissions,
+        updatedAt: Timestamp.now(),
+      });
+      toast({
+        title: "Success",
+        description: "Permissions updated successfully",
+      });
+      setPermissionsOpen(false);
+      fetchExaminers();
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update permissions",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  const togglePermission = (section: string, type: 'view' | 'edit' | 'delete') => {
+    setPermissions(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section as keyof typeof prev],
+        [type]: !prev[section as keyof typeof prev][type]
+      }
+    }));
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -208,14 +284,16 @@ export default function ManageExaminers() {
                 </Badge>
               )}
             </div>
-            <Button 
-              onClick={() => setCreateOpen(true)}
-              className="bg-white text-cyan-600 hover:bg-cyan-50 shadow-md w-full sm:w-auto"
-              size="lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Examiner
-            </Button>
+            {canEdit('examiners') && (
+              <Button 
+                onClick={() => setCreateOpen(true)}
+                className="bg-white text-cyan-600 hover:bg-cyan-50 shadow-md w-full sm:w-auto"
+                size="lg"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Examiner
+              </Button>
+            )}
           </div>
         </div>
 
@@ -458,6 +536,103 @@ export default function ManageExaminers() {
           </DialogContent>
         </Dialog>
 
+        {/* Manage Permissions Dialog - Only for Super Admin */}
+        {isSuperAdminUser && (
+          <Dialog open={permissionsOpen} onOpenChange={setPermissionsOpen}>
+            <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-cyan-900 dark:text-cyan-100">
+                  Manage Permissions
+                </DialogTitle>
+                <DialogDescription className="text-base">
+                  Control what {managingExaminer?.fullName} can do in each section
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {Object.entries({
+                  dashboard: 'Dashboard',
+                  manageExams: 'Manage Exams',
+                  allResults: 'All Results',
+                  students: 'Students',
+                  analytics: 'Analytics',
+                  leaderboard: 'Leaderboard Admin',
+                  examiners: 'Examiners',
+                  departments: 'Departments',
+                }).map(([key, label]) => (
+                  <div key={key} className="border rounded-xl p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <h3 className="font-semibold text-lg mb-3 text-cyan-900 dark:text-cyan-100">
+                      {label}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`${key}-view`}
+                          checked={permissions[key as keyof typeof permissions].view}
+                          onCheckedChange={() => togglePermission(key, 'view')}
+                        />
+                        <Label
+                          htmlFor={`${key}-view`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          View
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`${key}-edit`}
+                          checked={permissions[key as keyof typeof permissions].edit}
+                          onCheckedChange={() => togglePermission(key, 'edit')}
+                        />
+                        <Label
+                          htmlFor={`${key}-edit`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Edit/Update
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`${key}-delete`}
+                          checked={permissions[key as keyof typeof permissions].delete}
+                          onCheckedChange={() => togglePermission(key, 'delete')}
+                        />
+                        <Label
+                          htmlFor={`${key}-delete`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Delete
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setPermissionsOpen(false)}
+                  disabled={savingPermissions}
+                  className="rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handleSavePermissions}
+                  disabled={savingPermissions}
+                  className="bg-cyan-500 hover:bg-cyan-600 rounded-xl"
+                >
+                  {savingPermissions && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Permissions
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
         {/* Examiners List */}
         <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 px-6 py-4 border-b">
@@ -524,43 +699,63 @@ export default function ManageExaminers() {
                         </div>
 
                         {/* Right: Actions - Full width on mobile */}
-                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end sm:justify-start">
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end sm:justify-start flex-wrap">
+                          {/* Manage Permissions Button - Only for Super Admin with edit permission */}
+                          {isSuperAdminUser && canModify && canEdit('examiners') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleManagePermissions(examiner)}
+                              className="h-10 px-3 rounded-full border-purple-300 hover:bg-purple-50 hover:border-purple-400 flex-shrink-0"
+                              title="Manage permissions"
+                            >
+                              <Settings className="h-4 w-4 text-purple-600 mr-2" />
+                              <span className="text-xs font-medium">Permissions</span>
+                            </Button>
+                          )}
+                          
                           {/* Enable/Disable Toggle */}
-                          <div className="flex flex-col items-center gap-1">
-                            <Switch
-                              checked={!examiner.disabled}
-                              onCheckedChange={() => handleToggleStatus(examiner)}
-                              disabled={!canModify}
-                              className="data-[state=checked]:bg-green-500"
-                            />
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {examiner.disabled ? 'Enable' : 'Disable'}
-                            </span>
-                          </div>
+                          {canEdit('examiners') && (
+                            <div className="flex flex-col items-center gap-1">
+                              <Switch
+                                checked={!examiner.disabled}
+                                onCheckedChange={() => handleToggleStatus(examiner)}
+                                disabled={!canModify}
+                                className="data-[state=checked]:bg-green-500"
+                              />
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {examiner.disabled ? 'Enable' : 'Disable'}
+                              </span>
+                            </div>
+                          )}
                           
                           {/* Edit Button */}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditClick(examiner)}
-                            disabled={!canModify}
-                            className="h-10 w-10 p-0 rounded-full border-cyan-300 hover:bg-cyan-50 hover:border-cyan-400 flex-shrink-0"
-                            title={!canModify ? "Cannot modify this examiner" : "Edit examiner"}
-                          >
-                            <Pencil className="h-4 w-4 text-cyan-600" />
-                          </Button>
+                          {canEdit('examiners') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditClick(examiner)}
+                              disabled={!canModify}
+                              className="h-10 w-10 p-0 rounded-full border-cyan-300 hover:bg-cyan-50 hover:border-cyan-400 flex-shrink-0"
+                              title={!canModify ? "Cannot modify this examiner" : "Edit examiner"}
+                            >
+                              <Pencil className="h-4 w-4 text-cyan-600" />
+                            </Button>
+                          )}
                           
                           {/* Delete Button */}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDeleteClick(examiner)}
-                            disabled={!canModify}
-                            className="h-10 w-10 p-0 rounded-full border-red-300 hover:bg-red-50 hover:border-red-400 flex-shrink-0"
-                            title={!canModify ? "Cannot delete this examiner" : "Delete examiner"}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          {canDelete('examiners') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteClick(examiner)}
+                              disabled={!canModify}
+                              className="h-10 w-10 p-0 rounded-full border-red-300 hover:bg-red-50 hover:border-red-400 flex-shrink-0"
+                              title={!canModify ? "Cannot delete this examiner" : "Delete examiner"}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>

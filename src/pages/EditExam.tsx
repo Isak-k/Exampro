@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useSectionPermissions } from "@/hooks/useSectionPermissions";
 import {
   Loader2,
   ArrowLeft,
@@ -85,6 +86,9 @@ const EditExam = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { canEdit, canDelete } = useSectionPermissions();
+  const canEditExams = canEdit('manageExams');
+  const canDeleteExams = canDelete('manageExams');
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -156,6 +160,10 @@ const EditExam = () => {
   };
 
   const addQuestionItem = () => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     setQuestions([
       ...questions,
       {
@@ -171,12 +179,20 @@ const EditExam = () => {
   };
 
   const updateQuestionState = (index: number, updates: Partial<Question>) => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     const newQuestions = [...questions];
     newQuestions[index] = { ...newQuestions[index], ...updates };
     setQuestions(newQuestions);
   };
 
   const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     const newQuestions = [...questions];
     newQuestions[questionIndex].options[optionIndex] = value;
     setQuestions(newQuestions);
@@ -188,6 +204,10 @@ const EditExam = () => {
   };
 
   const handleDeleteQuestion = async () => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     if (questionToDelete === null || !id) return;
 
     const question = questions[questionToDelete];
@@ -206,6 +226,10 @@ const EditExam = () => {
   };
 
   const setAllFeedbackType = (type: "instant" | "hidden") => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     const updatedQuestions = questions.map((q) => ({
       ...q,
       feedbackType: type,
@@ -226,6 +250,10 @@ const EditExam = () => {
   };
 
   const saveExam = async () => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     if (!exam || !id) return;
 
     setSaving(true);
@@ -308,6 +336,10 @@ const EditExam = () => {
   };
 
   const togglePublish = async () => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     if (!exam || !id) return;
 
     if (!exam.isPublished && questions.length === 0) {
@@ -344,6 +376,10 @@ const EditExam = () => {
   };
 
   const handlePublishConfirm = async () => {
+    if (!canEditExams) {
+      toast({ title: "Permission Denied", description: "You cannot edit exams.", variant: "destructive" });
+      return;
+    }
     if (!exam || !id) return;
 
     try {
@@ -377,6 +413,10 @@ const EditExam = () => {
   };
 
   const handleDeleteExam = async () => {
+    if (!canDeleteExams) {
+      toast({ title: "Permission Denied", description: "You cannot delete exams.", variant: "destructive" });
+      return;
+    }
     if (!id) return;
 
     try {
@@ -426,6 +466,7 @@ const EditExam = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            {canDeleteExams && (
             <Button 
               variant="outline" 
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -434,6 +475,8 @@ const EditExam = () => {
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Exam
             </Button>
+            )}
+            {canEditExams && (
             <Button variant="outline" onClick={togglePublish}>
               {exam.isPublished ? (
                 <>
@@ -447,6 +490,8 @@ const EditExam = () => {
                 </>
               )}
             </Button>
+            )}
+            {canEditExams && (
             <Button onClick={saveExam} className="btn-primary" disabled={saving}>
               {saving ? (
                 <>
@@ -460,6 +505,7 @@ const EditExam = () => {
                 </>
               )}
             </Button>
+            )}
           </div>
         </div>
 
@@ -474,8 +520,9 @@ const EditExam = () => {
                 <Label>{t("admin.exams.form.title")}</Label>
                 <Input
                   value={exam.title}
-                  onChange={(e) => setExam({ ...exam, title: e.target.value })}
+                  onChange={(e) => canEditExams && setExam({ ...exam, title: e.target.value })}
                   className="input-focus"
+                  disabled={!canEditExams}
                 />
               </div>
               <div className="space-y-2">

@@ -25,6 +25,10 @@ import {
 } from "@/lib/firebase-leaderboard";
 import { getDepartments } from "@/lib/departments";
 import { Department } from "@/integrations/firebase/types";
+import { useSectionPermissions } from "@/hooks/useSectionPermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { isSuperAdmin } from "@/lib/firebase-admin";
 import {
   Select,
   SelectContent,
@@ -64,6 +68,9 @@ interface LeaderboardStatus {
 
 const AdminLeaderboard = () => {
   const { toast } = useToast();
+  const { role, user } = useAuth();
+  const navigate = useNavigate();
+  const { canView, canEdit, canDelete } = useSectionPermissions();
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [status, setStatus] = useState<LeaderboardStatus | null>(null);
@@ -72,10 +79,19 @@ const AdminLeaderboard = () => {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [recalculateDialogOpen, setRecalculateDialogOpen] = useState(false);
 
+  const isSuperAdminUser = user?.email ? isSuperAdmin(user.email) : false;
+
   useEffect(() => {
+    // Only allow admin
+    if (role !== "admin") {
+      navigate("/dashboard");
+      return;
+    }
+    
+    // All admins can view leaderboard admin page (permissions control buttons within the page)
     loadStatus();
     loadDepartments();
-  }, []);
+  }, [role, navigate]);
 
   const loadStatus = async () => {
     try {
@@ -294,20 +310,22 @@ const AdminLeaderboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Manually refresh leaderboard cache for all departments or a specific department
                 </p>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleRefreshCache()}
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    {loading ? (
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    Refresh All
-                  </Button>
-                </div>
+                {canEdit('leaderboard') && (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleRefreshCache()}
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      {loading ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Refresh All
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -318,23 +336,26 @@ const AdminLeaderboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Force complete recalculation of all rankings across all departments
                 </p>
-                <Button
-                  onClick={() => setRecalculateDialogOpen(true)}
-                  disabled={loading}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Recalculate All
-                </Button>
+                {canEdit('leaderboard') && (
+                  <Button
+                    onClick={() => setRecalculateDialogOpen(true)}
+                    disabled={loading}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Recalculate All
+                  </Button>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2 pt-4 border-t">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
-                Reset Department Leaderboard
-              </h3>
+            {canDelete('leaderboard') && (
+              <div className="space-y-2 pt-4 border-t">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Reset Department Leaderboard
+                </h3>
               <p className="text-sm text-muted-foreground">
                 Clear cache for a specific department (use for maintenance)
               </p>
@@ -363,7 +384,8 @@ const AdminLeaderboard = () => {
                   Reset
                 </Button>
               </div>
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

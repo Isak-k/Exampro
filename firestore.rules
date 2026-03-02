@@ -7,6 +7,27 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // --- Student Feedback Collection ---
+    match /studentFeedback/{feedbackId} {
+      allow create: if isAuthenticated(); // students can send messages
+      allow read: if isAuthenticated() && (
+        isAdmin() || isSuperAdmin() ||
+        (exists(/databases/$(database)/documents/studentFeedback/$(feedbackId)) &&
+         get(/databases/$(database)/documents/studentFeedback/$(feedbackId)).data.userId == request.auth.uid)
+      );
+      allow update, delete: if isAuthenticated() && (isAdmin() || isSuperAdmin());
+
+      match /replies/{replyId} {
+        allow create: if isAuthenticated(); // student/admin replies
+        allow read: if isAuthenticated() && (
+          isAdmin() || isSuperAdmin() ||
+          (exists(/databases/$(database)/documents/studentFeedback/$(feedbackId)) &&
+           get(/databases/$(database)/documents/studentFeedback/$(feedbackId)).data.userId == request.auth.uid)
+        );
+        allow update, delete: if isAuthenticated() && (isAdmin() || isSuperAdmin());
+      }
+    }
+
     function isUser(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -17,10 +38,26 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'isak@gmail.com';
+    }
+
+    function hasPermission(permission) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (isSuperAdmin() || 
+         (isAdmin() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions[permission] == true));
+    }
+
     // --- Users Collection ---
     match /users/{userId} {
-      allow read: if isUser(userId) || isAdmin();
-      allow write: if isUser(userId) || isAdmin();
+      allow read: if isUser(userId) || hasPermission('viewExaminers') || isAdmin();
+      allow create: if isSuperAdmin() || hasPermission('addExaminers');
+      allow update: if isUser(userId) || isSuperAdmin() || hasPermission('editExaminerPermissions');
+      allow delete: if isSuperAdmin() || hasPermission('deleteExaminers');
     }
 
     // --- Exams Collection ---
@@ -30,16 +67,16 @@ service cloud.firestore {
       }
 
       allow read: if isAuthenticated();
-      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.createdBy == request.auth.uid);
-      allow update: if isAdmin() || isExamCreator();
-      allow delete: if isAdmin() || isExamCreator();
+      allow create: if hasPermission('createExams') || (isAuthenticated() && request.resource.data.createdBy == request.auth.uid);
+      allow update: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isExamCreator());
+      allow delete: if hasPermission('deleteAllExams') || (hasPermission('deleteOwnExams') && isExamCreator());
 
       match /questions/{questionId} {
         function isParentExamCreator() {
           return isAuthenticated() && get(/databases/$(database)/documents/exams/$(examId)).data.createdBy == request.auth.uid;
         }
         allow read: if isAuthenticated();
-        allow write: if isAdmin() || isParentExamCreator();
+        allow write: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isParentExamCreator());
       }
 
       match /blockedStudents/{studentId} {
@@ -47,7 +84,7 @@ service cloud.firestore {
           return isAuthenticated() && get(/databases/$(database)/documents/exams/$(examId)).data.createdBy == request.auth.uid;
         }
         allow read: if isAuthenticated();
-        allow write: if isAdmin() || isParentExamCreator();
+        allow write: if hasPermission('editAllExams') || (hasPermission('editOwnExams') && isParentExamCreator());
       }
     }
 
@@ -70,18 +107,18 @@ service cloud.firestore {
     // --- Departments Collection ---
     match /departments/{departmentId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('manageDepartments');
     }
 
     // --- Leaderboard Collections (NEW) ---
     match /leaderboardCache/{departmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if hasPermission('viewLeaderboard') || isAuthenticated();
+      allow write: if hasPermission('manageLeaderboard');
     }
 
     match /leaderboardRankings/{rankingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if hasPermission('viewLeaderboard') || isAuthenticated();
+      allow write: if hasPermission('manageLeaderboard');
     }
   }
 }

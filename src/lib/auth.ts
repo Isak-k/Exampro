@@ -92,6 +92,7 @@ export async function getUserProfile(userId: string) {
     if (docSnap.exists()) {
       const data = docSnap.data();
       console.log('Profile found:', data);
+      console.log('sectionPermissions from Firestore:', data.sectionPermissions);
       
       // Check if user is disabled
       if (data.disabled === true) {
@@ -101,7 +102,7 @@ export async function getUserProfile(userId: string) {
         throw new Error('Your account has been disabled. Please contact an administrator.');
       }
       
-      return {
+      const profile = {
         id: data.userId,
         user_id: data.userId,
         full_name: data.fullName,
@@ -109,7 +110,12 @@ export async function getUserProfile(userId: string) {
         avatar_url: data.avatarUrl,
         role: data.role as AppRole,
         departmentId: data.departmentId,
+        sectionPermissions: data.sectionPermissions,
+        permissions: data.permissions || null,
       };
+      
+      console.log('Returning profile with sectionPermissions:', profile.sectionPermissions);
+      return profile;
     }
     
     console.warn('Profile not found for user:', userId);

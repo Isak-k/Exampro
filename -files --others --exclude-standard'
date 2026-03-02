@@ -1,0 +1,55 @@
+warning: in the working copy of 'public/placeholder.svg', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/auth/ProtectedRoute.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/firebase-admin.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/ManageExaminers.tsx', LF will be replaced by CRLF the next time Git touches it
+D	ALL_FEATURES_VISIBLE.md
+D	DEPARTMENT_FILTERING_FIX.md
+D	DEPLOY_LEADERBOARD_FIX.md
+D	DIMLIGHT_FIX.md
+D	EXAM_MIGRATION_FIX.md
+D	FEATURE_LOCATIONS.md
+D	FINAL_SUMMARY.md
+D	FIX_PUBLISHED_EXAMS.md
+D	FIX_PUBLISHED_EXAMS_GUIDE.md
+D	FRONTEND_READY.md
+D	FRONTEND_VERIFICATION.md
+D	IMPLEMENTATION_SUMMARY.md
+D	LEADERBOARD_AUTO_UPDATE_FIX.md
+D	LEADERBOARD_FIX.md
+D	LOADING_FLICKER_FIX.md
+D	MANUAL_LEADERBOARD_FIX.md
+D	OFFLINE_SUPPORT_COMPLETE.md
+D	QUICK_FIX_LEADERBOARD.md
+D	QUICK_FIX_SUMMARY.md
+D	QUICK_START.md
+D	STATUS_REPORT.md
+D	TEST_LEADERBOARD.md
+D	UI_DESIGN_UPDATES.md
+D	UI_REDESIGN_PLAN.md
+D	VERCEL_DEPLOYMENT_GUIDE.md
+D	VISUAL_GUIDE.md
+D	WHAT_IS_HAPPENING.md
+D	WHAT_TO_ADD_NEXT.md
+M	firestore.rules
+M	public/favicon.ico
+M	public/placeholder.svg
+M	src/App.tsx
+M	src/components/auth/ProtectedRoute.tsx
+M	src/components/exam/ExamCard.tsx
+M	src/components/layout/DashboardLayout.tsx
+M	src/contexts/AuthContext.tsx
+M	src/integrations/firebase/types.ts
+M	src/lib/auth.ts
+M	src/lib/firebase-admin.ts
+M	src/lib/firebase-exams.ts
+M	src/main.tsx
+M	src/pages/AdminLeaderboard.tsx
+M	src/pages/AdminStudents.tsx
+M	src/pages/EditExam.tsx
+M	src/pages/ManageExaminers.tsx
+M	src/pages/Settings.tsx
+M	src/pages/StudentExams.tsx
+M	src/pages/StudentResults.tsx
+D	"\342\234\205_ALL_FEATURES_LIVE.md"
+D	"\360\237\216\211_COMPLETE_IMPLEMENTATION.md"

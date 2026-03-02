@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { newPasswordSchema } from "@/lib/validations";
-import { Loader2, User, Mail, Lock, Save, Shield } from "lucide-react";
+import { Loader2, User, Mail, Lock, Save, Shield, ArrowLeft } from "lucide-react";
 
 const Settings = () => {
   const { profile, refreshProfile, user } = useAuth();
@@ -128,11 +128,23 @@ const Settings = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in max-w-2xl">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-display font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your account settings
-          </p>
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-display font-bold">Settings</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage your account settings
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate(-1)}
+            className="mt-1"
+            aria-label="Go Back"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
         </div>
 
         {/* Profile Section */}

@@ -4,8 +4,14 @@ import { getPublishedExams } from "@/lib/firebase-exams";
 import { getStudentAttempts } from "@/lib/firebase-attempts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ExamCard } from "@/components/exam/ExamCard";
-import { Loader2, ClipboardList } from "lucide-react";
+import { Loader2, ClipboardList, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 
 interface ExamData {
   id: string;
@@ -23,6 +29,9 @@ const StudentExams = () => {
   const [exams, setExams] = useState<ExamData[]>([]);
   const [attemptedExamIds, setAttemptedExamIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user && profile) {
@@ -54,6 +63,32 @@ const StudentExams = () => {
       console.error("Error fetching exams:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitFeedback = async () => {
+    if (!user || !profile) return;
+    if (!message.trim()) {
+      toast({ title: "Write a message", description: "Please enter your comment.", variant: "destructive" });
+      return;
+    }
+    try {
+      setSending(true);
+      await addDoc(collection(db, "studentFeedback"), {
+        userId: user.uid,
+        email: profile.email,
+        fullName: profile.full_name,
+        departmentId: profile.departmentId || null,
+        message: message.trim(),
+        status: "open",
+        createdAt: Timestamp.now(),
+      });
+      setMessage("");
+      toast({ title: "Sent", description: "Your comment has been sent to the admins." });
+    } catch (e: any) {
+      toast({ title: "Failed to send", description: e.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -94,6 +129,27 @@ const StudentExams = () => {
             </p>
           </div>
         )}
+
+        {/* Feedback to Admins */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Contact Admins</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Write your comment or question to the admins..."
+              rows={4}
+            />
+            <div className="flex justify-end">
+              <Button onClick={submitFeedback} disabled={sending}>
+                <Send className="h-4 w-4 mr-2" />
+                {sending ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

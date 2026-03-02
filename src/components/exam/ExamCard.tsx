@@ -7,6 +7,8 @@ import { Clock, Calendar, FileQuestion, Users, Play, Edit2, BarChart3, Trash2 } 
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { getDateLocale } from "@/lib/utils";
+import { useSectionPermissions } from "@/hooks/useSectionPermissions";
+import { useToast } from "@/hooks/use-toast";
 
 interface ExamCardProps {
   exam: {
@@ -27,6 +29,9 @@ interface ExamCardProps {
 
 export function ExamCard({ exam, isAdmin = false, hasAttempted = false, onDelete }: ExamCardProps) {
   const { t, i18n } = useTranslation();
+  const { canEdit, canDelete } = useSectionPermissions();
+  const { toast } = useToast();
+  
   const isActive =
     exam.is_published &&
     (!exam.start_time || new Date(exam.start_time) <= new Date()) &&
@@ -34,6 +39,20 @@ export function ExamCard({ exam, isAdmin = false, hasAttempted = false, onDelete
 
   const isPast = exam.end_time && new Date(exam.end_time) < new Date();
   const isUpcoming = exam.start_time && new Date(exam.start_time) > new Date();
+
+  const handleDelete = () => {
+    if (!canDelete('manageExams')) {
+      toast({
+        title: 'Permission Denied',
+        description: "You don't have permission to delete exams",
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (onDelete) {
+      onDelete(exam.id);
+    }
+  };
 
   return (
     <Card className="border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -111,24 +130,26 @@ export function ExamCard({ exam, isAdmin = false, hasAttempted = false, onDelete
         {/* Actions */}
         {isAdmin ? (
           <div className="flex gap-2">
-            <Button asChild variant="outline" className="flex-1 rounded-xl border-cyan-300 hover:bg-cyan-50">
-              <Link to={`/dashboard/exams/${exam.id}/edit`}>
-                <Edit2 className="h-4 w-4 mr-2" />
-                {t("exam.action.edit")}
-              </Link>
-            </Button>
+            {canEdit('manageExams') && (
+              <Button asChild variant="outline" className="flex-1 rounded-xl border-cyan-300 hover:bg-cyan-50">
+                <Link to={`/dashboard/exams/${exam.id}/edit`}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {t("exam.action.edit")}
+                </Link>
+              </Button>
+            )}
             <Button asChild className="flex-1 rounded-xl bg-cyan-500 hover:bg-cyan-600">
               <Link to={`/dashboard/exams/${exam.id}/results`}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 {t("exam.action.results")}
               </Link>
             </Button>
-            {onDelete && (
+            {onDelete && canDelete('manageExams') && (
               <Button 
                 variant="outline" 
                 size="icon"
                 className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                onClick={() => onDelete(exam.id)}
+                onClick={handleDelete}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -278,7 +278,12 @@ export async function getAllExamResults(): Promise<ResultWithDetails[]> {
       ...doc.data()
     } as ExamAttempt & { id: string }));
 
-    if (attempts.length === 0) return [];
+    // Get archived results (from deleted exams)
+    const archivedSnap = await getDocs(collection(db, "archivedResults"));
+    const archived = archivedSnap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    })) as any[];
 
     // Get all exams to map titles and published status
     const examsRef = collection(db, "exams");
@@ -289,7 +294,7 @@ export async function getAllExamResults(): Promise<ResultWithDetails[]> {
     }));
 
     // Map attempts to results with details
-    const results: ResultWithDetails[] = attempts.map(attempt => {
+    const liveResults: ResultWithDetails[] = attempts.map(attempt => {
       const exam = examsMap.get(attempt.examId);
       return {
         ...attempt,
@@ -299,8 +304,19 @@ export async function getAllExamResults(): Promise<ResultWithDetails[]> {
         resultsPublished: exam?.resultsPublished || false
       };
     });
+    
+    // Map archived results (treat as published for viewing)
+    const archivedResults: ResultWithDetails[] = archived.map(ar => ({
+      ...(ar as any),
+      id: ar.attemptId || ar.id,
+      studentName: ar.studentName || "Unknown",
+      studentEmail: ar.studentEmail || "N/A",
+      examTitle: ar.examTitle || "Deleted Exam",
+      resultsPublished: true
+    }));
 
     // Client-side sort by submittedAt (descending)
+    const results = [...liveResults, ...archivedResults];
     results.sort((a, b) => {
       const timeA = a.submittedAt?.seconds || 0;
       const timeB = b.submittedAt?.seconds || 0;

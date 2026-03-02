@@ -6,6 +6,7 @@ import { InstallPrompt } from "@/components/ui/install-prompt";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GraduationCap } from "lucide-react";
@@ -19,11 +20,13 @@ import CreateExam from "./pages/CreateExam";
 import EditExam from "./pages/EditExam";
 import ExamResults from "./pages/ExamResults";
 import AdminStudents from "./pages/AdminStudents";
+import AdminFeedback from "./pages/AdminFeedback";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLeaderboardSimple from "./pages/AdminLeaderboardSimple";
 import AdminAllResults from "./pages/AdminAllResults";
 import StudentExams from "./pages/StudentExams";
 import StudentResults from "./pages/StudentResults";
+import StudentMessages from "./pages/StudentMessages";
 import ReviewExam from "./pages/ReviewExam";
 import TakeExam from "./pages/TakeExam";
 import Settings from "./pages/Settings";
@@ -35,6 +38,8 @@ import ManageExaminers from "./pages/ManageExaminers";
 import ManageDepartments from "./pages/ManageDepartments";
 import MigrateExams from "./pages/MigrateExams";
 import ExamDiagnostic from "./pages/ExamDiagnostic";
+import SuperAdmin from "./pages/SuperAdmin";
+import PermissionTest from "./pages/PermissionTest";
 
 const queryClient = new QueryClient();
 
@@ -91,24 +96,24 @@ function AppRoutes() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
-        {/* Admin Routes - Accessible by Admin and Student (Creator) */}
+        {/* Admin Routes - Restricted to Admins; fine-grained via permissions where needed */}
         <Route path="/dashboard/admin/exams" element={
-          <ProtectedRoute allowedRoles={["admin", "student"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminExams />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/exams/new" element={
-          <ProtectedRoute allowedRoles={["admin", "student"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <CreateExam />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/exams/:id/edit" element={
-          <ProtectedRoute allowedRoles={["admin", "student"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <EditExam />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/exams/:examId/results" element={
-          <ProtectedRoute allowedRoles={["admin", "student"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <ExamResults />
           </ProtectedRoute>
         } />
@@ -117,6 +122,11 @@ function AppRoutes() {
         <Route path="/dashboard/students" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminStudents />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/feedback" element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminFeedback />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/examiners" element={
@@ -144,6 +154,16 @@ function AppRoutes() {
             <AdminLeaderboardSimple />
           </ProtectedRoute>
         } />
+        <Route path="/dashboard/super-admin" element={
+          <ProtectedRoute allowedRoles={["admin"]} requireSuperAdmin>
+            <SuperAdmin />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/permission-test" element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <PermissionTest />
+          </ProtectedRoute>
+        } />
         
         {/* Student Routes */}
         <Route path="/dashboard/exams" element={
@@ -154,6 +174,11 @@ function AppRoutes() {
         <Route path="/dashboard/results" element={
           <ProtectedRoute allowedRoles={["student"]}>
             <StudentResults />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/messages" element={
+          <ProtectedRoute allowedRoles={["student"]}>
+            <StudentMessages />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/results/:attemptId/review" element={
@@ -177,13 +202,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OfflineIndicator />
-          <InstallPrompt />
-          <AppRoutes />
-        </TooltipProvider>
+        <PermissionsProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <OfflineIndicator />
+            <InstallPrompt />
+            <AppRoutes />
+          </TooltipProvider>
+        </PermissionsProvider>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>

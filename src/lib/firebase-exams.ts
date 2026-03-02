@@ -86,9 +86,72 @@ export async function updateExam(examId: string, updates: Partial<Exam>) {
   await updateDoc(docRef, payload);
 }
 
+/**
+ * Delete an exam and ALL of its related data:
+ * - questions subcollection
+ * - blockedStudents subcollection
+ * - examAttempts where examId == examId
+ *   - answers subcollection under each attempt
+ * - finally, the exam document itself
+ *
+ * Uses batched deletes in chunks to respect Firestore limits.
+ */
 export async function deleteExam(examId: string) {
-  const docRef = doc(db, 'exams', examId);
-  await deleteDoc(docRef);
+  // Helper to batch delete document snapshots in chunks of 500
+  const batchDeleteDocs = async (snapshots: Array<{ ref: any }>) => {
+    const CHUNK = 450; // keep headroom
+    for (let i = 0; i < snapshots.length; i += CHUNK) {
+      const slice = snapshots.slice(i, i + CHUNK);
+      const batch = writeBatch(db);
+      slice.forEach((s) => batch.delete(s.ref));
+      await batch.commit();
+    }
+  };
+
+  // 1) Delete questions
+  const questionsSnap = await getDocs(collection(db, 'exams', examId, 'questions'));
+  if (!questionsSnap.empty) {
+    await batchDeleteDocs(questionsSnap.docs as any);
+  }
+
+  // 2) Delete blocked students
+  const blockedSnap = await getDocs(collection(db, 'exams', examId, 'blockedStudents'));
+  if (!blockedSnap.empty) {
+    await batchDeleteDocs(blockedSnap.docs as any);
+  }
+
+  // 3) Archive submitted attempts, then delete attempts and their answers
+  const attemptsSnap = await getDocs(query(collection(db, 'examAttempts'), where('examId', '==', examId)));
+  if (!attemptsSnap.empty) {
+    for (const attempt of attemptsSnap.docs) {
+      const aData: any = attempt.data();
+      // Archive submitted attempts for All Results/My Results history
+      if (aData.isSubmitted) {
+        await addDoc(collection(db, 'archivedResults'), {
+          attemptId: attempt.id,
+          examId,
+          examTitle: aData.examTitle || null,
+          studentId: aData.studentId,
+          studentName: aData.studentName || null,
+          studentEmail: aData.studentEmail || null,
+          totalScore: aData.totalScore ?? null,
+          maxScore: aData.maxScore ?? null,
+          timeSpentSeconds: aData.timeSpentSeconds ?? null,
+          submittedAt: aData.submittedAt || Timestamp.now(),
+          deletedAt: Timestamp.now()
+        });
+      }
+      const answersSnap = await getDocs(collection(db, 'examAttempts', attempt.id, 'answers'));
+      if (!answersSnap.empty) {
+        await batchDeleteDocs(answersSnap.docs as any);
+      }
+    }
+    await batchDeleteDocs(attemptsSnap.docs as any);
+  }
+
+  // 4) Delete the exam document itself
+  const examRef = doc(db, 'exams', examId);
+  await deleteDoc(examRef);
 }
 
 export async function getExamsByCreator(userId: string): Promise<Exam[]> {

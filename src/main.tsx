@@ -4,40 +4,33 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Register service worker for offline support (works in both dev and prod)
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        console.log('✓ Service Worker registered:', registration.scope);
-        
-        // Check for updates every minute
-        setInterval(() => {
-          registration.update();
-        }, 60000);
-
-        // Handle updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('✓ New Service Worker available - will update on next reload');
-              }
-            });
-          }
-        });
-      })
-      .catch((error) => {
-        console.error('✗ Service Worker registration failed:', error);
-      });
-  });
-
-  // Handle service worker updates
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('✓ Service Worker updated');
-  });
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((registration) => {
+          setInterval(() => {
+            registration.update();
+          }, 60000);
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                }
+              });
+            }
+          });
+        })
+        .catch(() => {});
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {});
+  } else {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister());
+    });
+  }
 }
 
 // Handle online/offline events

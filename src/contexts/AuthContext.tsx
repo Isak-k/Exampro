@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/integrations/firebase/client";
 import { getUserRole, getUserProfile, AppRole } from "@/lib/auth";
+import { UserPermissions } from "@/types/permissions";
 
 interface Profile {
   id: string;
@@ -11,6 +12,8 @@ interface Profile {
   avatar_url: string | null;
   role?: AppRole;
   departmentId?: string;
+  sectionPermissions?: any; // Add section permissions
+  permissions?: UserPermissions | null;
 }
 
 interface AuthContextType {
